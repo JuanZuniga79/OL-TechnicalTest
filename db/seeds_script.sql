@@ -75,19 +75,28 @@ SELECT
     (SELECT id FROM users ORDER BY RANDOM() LIMIT 1)
 FROM inserted_merchant_subjects s;
 
-WITH merchant_establishments AS (
-    SELECT
-        id AS merchant_id,
-        FLOOR(RANDOM() * 10) + 1 AS num_establishments
-    FROM merchants
-)
+CREATE OR REPLACE FUNCTION get_random_merchant_id()
+RETURNS INTEGER AS $$
+DECLARE
+    random_id INTEGER;
+    max_id INTEGER;
+BEGIN
+    SELECT MAX(id) INTO max_id FROM merchants;
+    LOOP
+        random_id := FLOOR(RANDOM() * max_id) + 1;
+        IF EXISTS (SELECT 1 FROM merchants WHERE id = random_id) THEN
+            RETURN random_id;
+        END IF;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
 INSERT INTO establishments (name, income, employees, owner_id, updated_at, updated_by)
 SELECT
-    'Establecimiento ' || row_number() OVER (),
+    'Establecimiento ' || ROW_NUMBER() OVER (),
     ROUND((RANDOM() * 10000000)::NUMERIC, 2),
-    FLOOR(RANDOM() * 50),
-    me.merchant_id,
+    FLOOR(RANDOM() * 20),
+    get_random_merchant_id(),
     NOW(),
-    (SELECT id FROM users ORDER BY RANDOM() LIMIT 1)
-FROM merchant_establishments me, generate_series(1, 10) gs
-WHERE gs <= me.num_establishments;
+    (SELECT id FROM users WHERE users.role_id = 1)
+FROM generate_series(1, 10);
