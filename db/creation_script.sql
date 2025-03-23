@@ -131,3 +131,52 @@ CREATE TRIGGER enforce_disjoint_merchants
     BEFORE INSERT OR UPDATE ON merchants
     FOR EACH ROW
     EXECUTE FUNCTION check_disjoint_subjects();
+
+CREATE VIEW merchant_view AS
+SELECT
+    m.id,
+    m.email,
+    m.phone,
+    m.registered_at,
+    s.name AS status_name,
+    sub.name AS merchant_name,
+    mun.name AS municipality_name,
+    c.name AS country_name,
+    c.code AS country_code,
+    u.email AS updater_email,
+    ur.name AS updater_role,
+    usub.name AS updater_name,
+    e.id AS establishment_id,
+    e.name AS establishment_name,
+    e.income,
+    e.employees,
+    e.updated_at,
+    eu.email AS establishment_user_email,
+    eus.name AS establishment_user_subject_name,
+    eur.name AS establishment_user_role
+FROM merchants m
+LEFT JOIN subjects sub ON m.subject_id = sub.id
+LEFT JOIN statuses s ON m.status_id = s.id
+LEFT JOIN municipalities mun ON m.municipality_id = mun.id
+LEFT JOIN countries c ON mun.country_id = c.id
+LEFT JOIN users u ON m.updater_id = u.id
+LEFT JOIN subjects usub ON u.subject_id = usub.id
+LEFT JOIN roles ur ON u.role_id = ur.id
+LEFT JOIN establishments e ON e.owner_id = m.id
+LEFT JOIN users eu ON e.updated_by = eu.id
+LEFT JOIN subjects eus ON eu.subject_id = eus.id
+LEFT JOIN roles eur ON eu.role_id = eur.id;
+
+CREATE INDEX idx_merchants_subject_id ON merchants(subject_id);
+CREATE INDEX idx_merchants_status_id ON merchants(status_id);
+CREATE INDEX idx_merchants_municipality_id ON merchants(municipality_id);
+CREATE INDEX idx_merchants_updater_id ON merchants(updater_id);
+CREATE INDEX idx_municipalities_country_id ON municipalities(country_id);
+CREATE INDEX idx_users_subject_id ON users(subject_id);
+CREATE INDEX idx_users_role_id ON users(role_id);
+CREATE INDEX idx_establishments_owner_id ON establishments(owner_id);
+CREATE INDEX idx_establishments_updated_by ON establishments(updated_by);
+
+CREATE INDEX idx_subjects_name ON subjects(name);
+CREATE INDEX idx_merchants_registered_at ON merchants(registered_at DESC);
+CREATE INDEX idx_statuses_name ON statuses(name);
