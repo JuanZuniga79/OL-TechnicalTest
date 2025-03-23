@@ -1,0 +1,4 @@
+[submodule "backend"]
+	path = OL-TechnicalTest-Backend
+	url = https://github.com/JuanZuniga79/OL-TechnicalTest-Backend.git
+	branch = main

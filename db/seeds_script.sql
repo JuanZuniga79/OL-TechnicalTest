@@ -1,5 +1,6 @@
 TRUNCATE TABLE countries RESTART IDENTITY CASCADE;
 TRUNCATE TABLE roles RESTART IDENTITY CASCADE;
+TRUNCATE TABLE subjects RESTART IDENTITY CASCADE;
 TRUNCATE TABLE statuses RESTART IDENTITY CASCADE;
 TRUNCATE TABLE users RESTART IDENTITY CASCADE;
 TRUNCATE TABLE municipalities RESTART IDENTITY CASCADE;
@@ -11,15 +12,20 @@ VALUES
 ('administrador', 'sujeto con el mayor control sobre los datos'),
 ('auxiliar de registro', 'sin descripcion');
 
-INSERT INTO users (first_name, last_name, email, password, role_id)
+INSERT INTO subjects (name, type)
 VALUES
-('juan camilo', 'zuniga', 'juan@gmail.com',
-'$2a$14$ea/yfiMp2A.D0y60ZE4m6O3iNX7zUQHh6.Z1Dsaxd/yg9Ld0WyOPG',
-(SELECT id FROM roles WHERE name = 'administrador'));
-INSERT INTO users (first_name, last_name, email, password, role_id) VALUES
-('Juan', 'Pérez', 'perezjuan@hotmail.com',
- '$2a$14$nmA33mubaj7HbrlGoqcHEOmVIj.AF5xnILqhdFd9/BlRFNTHsSmjq',
-(SELECT id FROM roles WHERE name = 'auxiliar de registro'));
+('Admin User', 'U'),
+('Auxiliar User', 'U');
+
+INSERT INTO users (email, password, subject_id, role_id)
+VALUES
+('admin@gmail.com', '$2a$14$vSlEo/g5EVvDQYVlwCqTzOmGkDeq4L6ctSE7TvJ76JZW8mYhCOnRu',
+    (SELECT id FROM subjects WHERE subjects.name = 'Admin User' LIMIT 1),
+    (SELECT id FROM roles WHERE roles.name = 'administrador' LIMIT 1)),
+('auxiliar@hotmail.com', '$2a$14$4t6/fs9I8X.ZbdUSc26OF./OQlJjfvujeH/.yZr12Cq6rDuZOZ5X2',
+    (SELECT id FROM subjects WHERE subjects.name = 'Auxiliar User' LIMIT 1),
+    (SELECT id FROM roles WHERE roles.name = 'auxiliar de registro' LIMIT 1)
+);
 
 INSERT INTO countries (name, code)
 VALUES
@@ -47,70 +53,50 @@ VALUES
 ('activo'),
 ('inactivo');
 
-INSERT INTO merchants (name, email, phone, status_id, municipality_id, updater_id) VALUES
-('Comerciante 1', 'comerciante1@gmail.com', '1234567890',
- (SELECT id FROM statuses WHERE name = 'activo'),
- (SELECT id FROM municipalities WHERE name = 'Bogotá'),
- (SELECT id FROM users WHERE first_name = 'juan camilo')),
+WITH inserted_merchant_subjects AS (
+    INSERT INTO subjects (name, type)
+    VALUES
+    ('Merchant A', 'M'),
+    ('Merchant B', 'M'),
+    ('Merchant C', 'M'),
+    ('Merchant D', 'M'),
+    ('Merchant E', 'M')
+    RETURNING id
+)
 
-('Comerciante 2', 'comerciante2@hotmail.com', '9876543210',
- (SELECT id FROM statuses WHERE name = 'activo'),
- (SELECT id FROM municipalities WHERE name = 'Medellín'),
- (SELECT id FROM users WHERE first_name = 'Juan')),
+INSERT INTO merchants (email, phone, registered_at, updated_at, status_id, subject_id, municipality_id, updater_id)
+SELECT
+    'merchant' || row_number() OVER () || '@gmail.com',
+    '300000000' || row_number() OVER (),
+    NOW(), NOW(),
+    (SELECT id FROM statuses WHERE statuses.name = 'activo'),
+    s.id,
+    (SELECT id FROM municipalities ORDER BY RANDOM() LIMIT 1),
+    (SELECT id FROM users ORDER BY RANDOM() LIMIT 1)
+FROM inserted_merchant_subjects s;
 
-('Comerciante 3', 'comerciante3@outlook.com', '5551234567',
- (SELECT id FROM statuses WHERE name = 'activo'),
- (SELECT id FROM municipalities WHERE name = 'Cali'),
- (SELECT id FROM users WHERE first_name = 'juan camilo')),
+CREATE OR REPLACE FUNCTION get_random_merchant_id()
+RETURNS INTEGER AS $$
+DECLARE
+    random_id INTEGER;
+    max_id INTEGER;
+BEGIN
+    SELECT MAX(id) INTO max_id FROM merchants;
+    LOOP
+        random_id := FLOOR(RANDOM() * max_id) + 1;
+        IF EXISTS (SELECT 1 FROM merchants WHERE id = random_id) THEN
+            RETURN random_id;
+        END IF;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
 
-('Comerciante 4', 'comerciante4@gmail.com', '1112223333',
- (SELECT id FROM statuses WHERE name = 'activo'),
- (SELECT id FROM municipalities WHERE name = 'Barranquilla'),
- (SELECT id FROM users WHERE first_name = 'Juan')),
-
-('Comerciante 5', 'comerciante5@hotmail.com', '4445556666',
- (SELECT id FROM statuses WHERE name = 'activo'),
- (SELECT id FROM municipalities WHERE name = 'Cartagena'),
- (SELECT id FROM users WHERE first_name = 'Juan'));
-
-INSERT INTO establishments (name, income, employees, owner_id, updated_by)
-VALUES
--- Comerciante 1 (3 establecimientos)
-('Tienda Central', 150000.00, 8,
- (SELECT id FROM merchants WHERE name = 'Comerciante 1'),
- (SELECT updater_id FROM merchants WHERE name = 'Comerciante 1')),
-('Almacén Norte', 75000.50, 4,
- (SELECT id FROM merchants WHERE name = 'Comerciante 1'),
- (SELECT updater_id FROM merchants WHERE name = 'Comerciante 1')),
-('Bodega Sur', 200000.00, 12,
- (SELECT id FROM merchants WHERE name = 'Comerciante 1'),
- (SELECT updater_id FROM merchants WHERE name = 'Comerciante 1')),
-
--- Comerciante 2 (2 establecimientos)
-('Ferretería Moderna', 85000.00, 6,
- (SELECT id FROM merchants WHERE name = 'Comerciante 2'),
- (SELECT updater_id FROM merchants WHERE name = 'Comerciante 2')),
-('Supermercado Express', 120000.75, 9,
- (SELECT id FROM merchants WHERE name = 'Comerciante 2'),
- (SELECT updater_id FROM merchants WHERE name = 'Comerciante 2')),
-
--- Comerciante 3 (1 establecimiento)
-('Cafetería Gourmet', 50000.00, 3,
- (SELECT id FROM merchants WHERE name = 'Comerciante 3'),
- (SELECT updater_id FROM merchants WHERE name = 'Comerciante 3')),
-
--- Comerciante 4 (3 establecimientos)
-('Óptica Visión Clara', 95000.00, 5,
- (SELECT id FROM merchants WHERE name = 'Comerciante 4'),
- (SELECT updater_id FROM merchants WHERE name = 'Comerciante 4')),
-('Farmacia Salud Total', 180000.00, 10,
- (SELECT id FROM merchants WHERE name = 'Comerciante 4'),
- (SELECT updater_id FROM merchants WHERE name = 'Comerciante 4')),
-('Librería El Saber', 60000.00, 4,
- (SELECT id FROM merchants WHERE name = 'Comerciante 4'),
- (SELECT updater_id FROM merchants WHERE name = 'Comerciante 4')),
-
--- Comerciante 5 (1 establecimiento)
-('Electrodomésticos Power', 130000.00, 7,
- (SELECT id FROM merchants WHERE name = 'Comerciante 5'),
- (SELECT updater_id FROM merchants WHERE name = 'Comerciante 5'));
+INSERT INTO establishments (name, income, employees, owner_id, updated_at, updated_by)
+SELECT
+    'Establecimiento ' || ROW_NUMBER() OVER (),
+    ROUND((RANDOM() * 10000000)::NUMERIC, 2),
+    FLOOR(RANDOM() * 20),
+    get_random_merchant_id(),
+    NOW(),
+    (SELECT id FROM users WHERE users.role_id = 1)
+FROM generate_series(1, 10);
