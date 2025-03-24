@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS STATUSES(
 CREATE TABLE IF NOT EXISTS MERCHANTS(
     id BIGSERIAL PRIMARY KEY,
     email VARCHAR(256) UNIQUE,
-    phone VARCHAR(10) UNIQUE,
+    phone VARCHAR(10),
     registered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status_id INTEGER NOT NULL REFERENCES STATUSES(id) ON DELETE RESTRICT,
@@ -68,16 +68,6 @@ CREATE OR REPLACE FUNCTION check_disjoint_subjects()
     END;
     $$ LANGUAGE plpgsql;
 
-
-CREATE OR REPLACE FUNCTION avoid_update_creation_date_function()
-    RETURNS TRIGGER AS $$
-    BEGIN
-        IF OLD.registered_at IS NOT NULL AND NEW.registered_at <> OLD.registered_at THEN
-            RAISE EXCEPTION 'No se puede actualizar la fecha de creación';
-        END IF;
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION validate_email_function()
     RETURNS TRIGGER AS $$
@@ -111,11 +101,6 @@ CREATE TRIGGER update_merchant_update_date_trigger
     BEFORE UPDATE ON MERCHANTS
     FOR EACH ROW
     EXECUTE PROCEDURE update_date_function();
-
-CREATE TRIGGER avoid_update_creation_date_trigger
-    BEFORE UPDATE ON MERCHANTS
-    FOR EACH ROW
-    EXECUTE PROCEDURE avoid_update_creation_date_function();
 
 CREATE TRIGGER update_establishment_update_date_trigger
     BEFORE UPDATE ON ESTABLISHMENTS

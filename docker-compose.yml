@@ -30,6 +30,20 @@ services:
     depends_on:
       - postgres
 
+  frontend:
+    build:
+      context: ./OL-TechnicalTest-Frontend
+      dockerfile: Dockerfile
+    container_name: ol-test-next
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - ol_test_network
+    depends_on:
+      - backend
+      - postgres
+
 volumes:
   postgres_data:
     driver: local
