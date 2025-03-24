@@ -2,3 +2,7 @@
 	path = OL-TechnicalTest-Backend
 	url = https://github.com/JuanZuniga79/OL-TechnicalTest-Backend.git
 	branch = main
+[submodule "OL-TechnicalTest-Frontend"]
+	path = OL-TechnicalTest-Frontend
+	url = https://github.com/JuanZuniga79/OL-TechnicalTest-Frontend.git
+	branch = main

@@ -1,3 +1,6 @@
+networks:
+  ol_test_network:
+
 services:
   postgres:
     image: postgres:17-alpine3.19
@@ -9,6 +12,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: test
+    networks:
+      - ol_test_network
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -20,8 +25,25 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    networks:
+      - ol_test_network
     depends_on:
       - postgres
+
+  frontend:
+    build:
+      context: ./OL-TechnicalTest-Frontend
+      dockerfile: Dockerfile
+    container_name: ol-test-next
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - ol_test_network
+    depends_on:
+      - backend
+      - postgres
+
 volumes:
   postgres_data:
     driver: local
